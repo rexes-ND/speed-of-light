@@ -1,7 +1,10 @@
+[Link](https://developer.nvidia.com/blog/search-posts/?faceted_search_date_str=2012)
+
 # Done
 
 - [An Easy Introduction to CUDA C and C++](src/easy_intro_to_cuda.cu)
 - [How to Implement Performance Metrics in CUDA C/C++](src/performance_metrics.cu)
+- [How to Query Device Properties and Handle Errors in CUDA C/C++](src/query_dev_handle_error.cu)
 
 # TODO:
 
