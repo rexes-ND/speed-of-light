@@ -6,6 +6,7 @@
 - [How to Implement Performance Metrics in CUDA C/C++](src/performance_metrics.cu)
 - [How to Query Device Properties and Handle Errors in CUDA C/C++](src/query_dev_handle_error.cu)
 - [How to Optimize Data Transfers in CUDA C/C++](src/data_transfer.cu)
+- [How to Overlap Data Transfers in CUDA C/C++](src/overlap_data_transfer.cu)
 
 # TODO:
 

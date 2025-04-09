@@ -1,4 +1,4 @@
-all: build/easy_intro_to_cuda build/performance_metrics build/query_dev_handle_error build/data_transfer
+all: build/easy_intro_to_cuda build/performance_metrics build/query_dev_handle_error build/data_transfer build/overlap_data_transfer
 
 build/easy_intro_to_cuda: src/easy_intro_to_cuda.cu
 	mkdir -p build
@@ -15,6 +15,10 @@ build/query_dev_handle_error: src/query_dev_handle_error.cu
 build/data_transfer: src/data_transfer.cu
 	mkdir -p build
 	nvcc src/data_transfer.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/data_transfer
+
+build/overlap_data_transfer: src/overlap_data_transfer.cu
+	mkdir -p build
+	nvcc src/overlap_data_transfer.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/overlap_data_transfer
 
 clean:
 	rm -rf build
