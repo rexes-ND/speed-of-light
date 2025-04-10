@@ -8,9 +8,9 @@
 - [How to Optimize Data Transfers in CUDA C/C++](src/data_transfer.cu)
 - [How to Overlap Data Transfers in CUDA C/C++](src/overlap_data_transfer.cu)
 
-# TODO:
+# TODO
 
-- [OpenACC: Directives fro GPUs](https://developer.nvidia.com/blog/openacc-directives-gpus/)
+- [OpenACC: Directives for GPUs](https://developer.nvidia.com/blog/openacc-directives-gpus/)
 - [An OpenACC Example (Part 1)](https://developer.nvidia.com/blog/openacc-example-part-1/)
 - [An OpenACC Example (Part 2)](https://developer.nvidia.com/blog/openacc-example-part-2/)
 - [Expressive Algorithm Programming with Thrust](https://developer.nvidia.com/blog/expressive-algorithmic-programming-thrust/)
