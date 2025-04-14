@@ -2,6 +2,7 @@
 
 # Done
 
-- [https://developer.nvidia.com/blog/how-access-global-memory-efficiently-cuda-c-kernels/](src/gmem_access.cu)
+- [How to Access Global Memory Efficiently in CUDA C/C++ Kernels](src/gmem_access.cu)
+- [Using Shared Memory in CUDA C/C++](src/smem.cu)
 
 # TODO:
