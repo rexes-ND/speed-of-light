@@ -1,5 +1,5 @@
 /*
-    Link: https://developer.nvidia.com/blog/using-shared-memory-cuda-cc/
+  Link: https://developer.nvidia.com/blog/using-shared-memory-cuda-cc/
 */
 
 #include <iostream>

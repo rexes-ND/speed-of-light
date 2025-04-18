@@ -4,5 +4,6 @@
 
 - [How to Access Global Memory Efficiently in CUDA C/C++ Kernels](src/gmem_access.cu)
 - [Using Shared Memory in CUDA C/C++](src/smem.cu)
+- [An Efficient Matrix Transpose in CUDA C/C++](src/matrix_transpose.cu)
 
-# TODO:
+# TODO
