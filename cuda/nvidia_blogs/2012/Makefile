@@ -1,24 +1,17 @@
-all: build/easy_intro_to_cuda build/performance_metrics build/query_dev_handle_error build/data_transfer build/overlap_data_transfer
+NVCC := nvcc
+NVCCFLAGS := -O3 -std=c++17 -arch=sm_89 -lineinfo
 
-build/easy_intro_to_cuda: src/easy_intro_to_cuda.cu
-	mkdir -p build
-	nvcc src/easy_intro_to_cuda.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/easy_intro_to_cuda
+SRC_DIR := src
+BUILD_DIR := build
+TARGETS := easy_intro_to_cuda performance_metrics query_dev_handle_error data_transfer overlap_data_transfer
 
-build/performance_metrics: src/performance_metrics.cu
-	mkdir -p build
-	nvcc src/performance_metrics.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/performance_metrics
+.PHONY: all
+all: $(addprefix $(BUILD_DIR)/,$(TARGETS))
 
-build/query_dev_handle_error: src/query_dev_handle_error.cu
-	mkdir -p build
-	nvcc src/query_dev_handle_error.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/query_dev_handle_error
+$(BUILD_DIR)/%: $(SRC_DIR)/%.cu
+	@mkdir -p $(BUILD_DIR)
+	@$(NVCC) $(NVCCFLAGS) $< -o $@
 
-build/data_transfer: src/data_transfer.cu
-	mkdir -p build
-	nvcc src/data_transfer.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/data_transfer
-
-build/overlap_data_transfer: src/overlap_data_transfer.cu
-	mkdir -p build
-	nvcc src/overlap_data_transfer.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/overlap_data_transfer
-
+.PHONY: clean
 clean:
-	rm -rf build
+	@rm -rf $(BUILD_DIR)

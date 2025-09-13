@@ -1,16 +1,17 @@
-all: build/gmem_access build/smem build/matrix_transpose
+NVCC := nvcc
+NVCCFLAGS := -O3 -std=c++17 -arch=sm_89 -lineinfo
 
-build/gmem_access: src/gmem_access.cu
-	mkdir -p build
-	nvcc src/gmem_access.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/gmem_access
+SRC_DIR := src
+BUILD_DIR := build
+TARGETS := gmem_access smem matrix_transpose
 
-build/smem: src/smem.cu
-	mkdir -p build
-	nvcc src/smem.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/smem
+.PHONY: all
+all: $(addprefix $(BUILD_DIR)/,$(TARGETS))
 
-build/matrix_transpose: src/matrix_transpose.cu
-	mkdir -p build
-	nvcc src/matrix_transpose.cu -std=c++17 -gencode arch=compute_89,code=sm_89 -o build/matrix_transpose
+$(BUILD_DIR)/%: $(SRC_DIR)/%.cu
+	@mkdir -p $(BUILD_DIR)
+	@$(NVCC) $(NVCCFLAGS) $< -o $@
 
+.PHONY: clean
 clean: 
-	rm -rf build
+	@rm -rf $(BUILD_DIR)
