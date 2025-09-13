@@ -1,54 +1,53 @@
-/*
-    Link: https://developer.nvidia.com/blog/how-optimize-data-transfers-cuda-cc/
-*/
-
-#include <cassert>
-#include <cstdio>
-#include <cstring>
+#include <algorithm>
+#include <iostream>
+#include <string>
+#include <vector>
 
 #include <cuda_runtime_api.h>
 
-inline cudaError_t checkCuda(cudaError_t result) {
-  if (result != cudaSuccess) {
-    std::fprintf(stderr, "CUDA Runtime Error: %s\n",
-                 cudaGetErrorString(result));
-    assert(result == cudaSuccess);
+#define CHECK_CUDA_ERROR(err) __check_cuda_error(err, __FILE__, __LINE__)
+static void __check_cuda_error(cudaError_t err, const char *filename,
+                               int line) {
+  if (cudaSuccess != err) {
+    std::cerr << "CUDA API error: " << cudaGetErrorString(err) << " from file "
+              << filename << ", line " << line << std::endl;
+    exit(err);
   }
-  return result;
 }
 
-void profileCopies(float *h_a, float *h_b, float *d, unsigned int n,
-                   const char *desc) {
-  /*
-    Profiles `h_a` -> `d` and `d` -> `h_b`.
-  */
-  std::printf("\n%s transfer\n", desc);
-  const size_t bytes{n * sizeof(float)};
+void profile_copy(float *h_a, float *h_b, float *d, unsigned int n,
+                  const std::string &desc) {
+  // 1. copy `h_a` to `d`
+  // 2. copy `d`   to `h_b`
+  std::cout << std::endl << desc << " transfer" << std::endl;
+  const auto bytes = n * sizeof(float);
 
-  cudaEvent_t startEvent, stopEvent;
-  checkCuda(cudaEventCreate(&startEvent));
-  checkCuda(cudaEventCreate(&stopEvent));
+  cudaEvent_t start_event, stop_event;
+  CHECK_CUDA_ERROR(cudaEventCreate(&start_event));
+  CHECK_CUDA_ERROR(cudaEventCreate(&stop_event));
 
-  checkCuda(cudaEventRecord(startEvent, 0));
-  checkCuda(cudaMemcpy(d, h_a, bytes, cudaMemcpyHostToDevice));
-  checkCuda(cudaEventRecord(stopEvent, 0));
-  checkCuda(cudaEventSynchronize(stopEvent));
+  CHECK_CUDA_ERROR(cudaEventRecord(start_event));
+  CHECK_CUDA_ERROR(cudaMemcpy(d, h_a, bytes, cudaMemcpyDefault));
+  CHECK_CUDA_ERROR(cudaEventRecord(stop_event));
+  CHECK_CUDA_ERROR(cudaEventSynchronize(stop_event));
 
-  float time{};
-  checkCuda(cudaEventElapsedTime(&time, startEvent, stopEvent));
-  std::printf("\tHost to Device bandwidth (GB/s): %f\n", bytes * 1e-6 / time);
+  float time;
+  CHECK_CUDA_ERROR(cudaEventElapsedTime(&time, start_event, stop_event));
+  std::cout << "\tHost to Device bandwidth (GB/s): " << bytes * 1e-6 / time
+            << std::endl;
 
-  checkCuda(cudaEventRecord(startEvent, 0));
-  checkCuda(cudaMemcpy(h_b, d, bytes, cudaMemcpyDeviceToHost));
-  checkCuda(cudaEventRecord(stopEvent, 0));
-  checkCuda(cudaEventSynchronize(stopEvent));
+  CHECK_CUDA_ERROR(cudaEventRecord(start_event));
+  CHECK_CUDA_ERROR(cudaMemcpy(h_b, d, bytes, cudaMemcpyDefault));
+  CHECK_CUDA_ERROR(cudaEventRecord(stop_event));
+  CHECK_CUDA_ERROR(cudaEventSynchronize(stop_event));
 
-  checkCuda(cudaEventElapsedTime(&time, startEvent, stopEvent));
-  std::printf("\tDevice to Host bandwidth (GB/s): %f\n", bytes * 1e-6 / time);
+  CHECK_CUDA_ERROR(cudaEventElapsedTime(&time, start_event, stop_event));
+  std::cout << "\tDevice to Host bandwidth (GB/s): " << bytes * 1e-6 / time
+            << std::endl;
 
   for (int i = 0; i < n; ++i) {
     if (h_a[i] != h_b[i]) {
-      std::printf("*** %s transfers failed ***\n", desc);
+      std::cout << "*** " << desc << " transfers failed ***" << std::endl;
       break;
     }
   }
@@ -56,65 +55,51 @@ void profileCopies(float *h_a, float *h_b, float *d, unsigned int n,
 
 int main() {
   /*
-      CMD: nsys profile --stats=true -o /dev/null ./build/data_transfer
-  */
-  //   constexpr unsigned int N{1 << 20};
-  //   int *h_a{new int[N]};
-  //   int *d_a;
-  //   const size_t bytes{N * sizeof(int)};
-  //   cudaMalloc(&d_a, bytes);
+    // nsys profile --stats=true -o /dev/null <executable>
 
-  //   std::memset(h_a, 0, bytes);
-  //   cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
-  //   cudaMemcpy(h_a, d_a, bytes, cudaMemcpyDeviceToHost);
+    constexpr auto N = 1U << 20;
+    std::vector<int> h_a(N);
 
-  /*
-    Device: NVIDIA GeForce RTX 4090
-    Transfer size (MB): 16
+    int *d_a;
+    const auto bytes = N * sizeof(int);
+    cudaMalloc(&d_a, bytes);
 
-    Pageable transfer
-        Host to Device bandwidth (GB/s): 6.159978
-        Device to Host bandwidth (GB/s): 5.782758
-
-    Pinned transfer
-        Host to Device bandwidth (GB/s): 15.100895
-        Device to Host bandwidth (GB/s): 12.688480
+    cudaMemcpy(d_a, h_a.data(), bytes, cudaMemcpyDefault);
+    cudaMemcpy(h_a.data(), d_a, bytes, cudaMemcpyDefault);
   */
 
-  constexpr unsigned int nElements{4 << 20};
-  const size_t bytes{nElements * sizeof(float)};
+  constexpr auto N = 4U << 20;
+  constexpr auto bytes = N * sizeof(float);
 
-  float *h_aPageable{new float[nElements]};
-  float *h_bPageable{new float[nElements]};
+  std::vector<float> h_a(N);
+  std::vector<float> h_b(N);
 
-  float *h_aPinned, *h_bPinned;
+  float *h_a_pinned, *h_b_pinned;
+  CHECK_CUDA_ERROR(cudaMallocHost(&h_a_pinned, bytes));
+  CHECK_CUDA_ERROR(cudaMallocHost(&h_b_pinned, bytes));
+
   float *d_a;
-  checkCuda(cudaMallocHost(&h_aPinned, bytes));
-  checkCuda(cudaMallocHost(&h_bPinned, bytes));
-  checkCuda(cudaMalloc(&d_a, bytes));
+  CHECK_CUDA_ERROR(cudaMalloc(&d_a, bytes));
 
-  for (int i = 0; i < nElements; ++i)
-    h_aPageable[i] = i;
+  for (int i = 0; i < N; ++i)
+    h_a[i] = i;
 
-  std::memcpy(h_aPinned, h_aPageable, bytes);
-  std::memset(h_bPageable, 0, bytes);
-  std::memset(h_bPinned, 0, bytes);
+  std::copy_n(h_a.data(), N, h_a_pinned);
+  std::fill(h_b_pinned, h_b_pinned + N, 0);
 
   cudaDeviceProp prop;
-  checkCuda(cudaGetDeviceProperties(&prop, 0));
+  CHECK_CUDA_ERROR(cudaGetDeviceProperties(&prop, 0));
 
-  std::printf("\nDevice: %s\n", prop.name);
-  std::printf("Transfer size (MB): %lu\n", bytes >> 20);
+  std::cout << std::endl << "Device: " << prop.name << std::endl;
+  std::cout << "Transfer size (MB): " << (bytes >> 20) << std::endl;
 
-  profileCopies(h_aPageable, h_bPageable, d_a, nElements, "Pageable");
-  profileCopies(h_aPinned, h_bPinned, d_a, nElements, "Pinned");
-  std::printf("\n");
+  profile_copy(h_a.data(), h_b.data(), d_a, N, "Pageable");
+  profile_copy(h_a_pinned, h_b_pinned, d_a, N, "Pinned");
+  std::cout << std::endl;
 
   cudaFree(d_a);
-  cudaFreeHost(h_aPinned);
-  cudaFreeHost(h_bPinned);
-  delete[] h_aPageable;
-  delete[] h_bPageable;
+  cudaFreeHost(h_a_pinned);
+  cudaFreeHost(h_b_pinned);
 
   return 0;
 }

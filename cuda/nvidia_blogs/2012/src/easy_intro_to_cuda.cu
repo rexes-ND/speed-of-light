@@ -1,7 +1,3 @@
-/*
-    Link: https://developer.nvidia.com/blog/easy-introduction-cuda-c-and-c/
-*/
-
 #include <cstdio>
 #include <vector>
 
