@@ -98,6 +98,27 @@ Pinned transfer
 
 [Code](src/overlap_data_transfer.cu)
 
+The blog is about using multiple streams to overlap copy with execution.
+
+Baseline: ![Baseline](misc/baseline.png)
+Async v1: ![Async v1](misc/async_v1.png)
+Async v2: ![Async v2](misc/async_v2.png)
+
+```bash
+Device : NVIDIA GeForce RTX 4090
+Time for sequential transfer and execute (ms): 1.68467
+    max error: 1.19209e-07
+Time for asynchronous V1 transfer and execute (ms): 0.930848
+    max error: 1.19209e-07
+Time for asynchronouse V2 transfer and execute (ms): 0.924768
+    max error: 1.19209e-07
+```
+
+Eventually the code should use non-default streams or per-thread default stream.
+This is especially important for libraries.
+If code in a library uses the default stream,
+there is no chance for the end user to overlap data transfers with the library kernel execution.
+
 # TODO
 
 - [OpenACC: Directives for GPUs](https://developer.nvidia.com/blog/openacc-directives-gpus/)

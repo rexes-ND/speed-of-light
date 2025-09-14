@@ -1,127 +1,126 @@
-/*
-  Link: https://developer.nvidia.com/blog/how-overlap-data-transfers-cuda-cc/
-*/
-
+#include <algorithm>
 #include <array>
-#include <cassert>
-#include <cstdio>
-#include <cstring>
+#include <iostream>
 
 #include <cuda_runtime_api.h>
 
-inline cudaError_t checkCuda(cudaError_t result) {
-  if (result != cudaSuccess) {
-    std::fprintf(stderr, "CUDA Runtime Error: %s\n",
-                 cudaGetErrorString(result));
-    assert(result == cudaSuccess);
+#define CHECK_CUDA_ERROR(err) __check_cuda_error(err, __FILE__, __LINE__)
+static void __check_cuda_error(cudaError_t err, const char *filename,
+                               int line) {
+  if (cudaSuccess != err) {
+    std::cerr << "CUDA API error: " << cudaGetErrorString(err) << " from file "
+              << filename << ", line " << line << std::endl;
+    exit(err);
   }
-  return result;
 }
 
 __global__ void kernel(float *a, int offset) {
-  auto i{offset + threadIdx.x + blockIdx.x * blockDim.x};
-  auto x{static_cast<float>(i)};
-  auto s{sinf(x)};
-  auto c{cosf(x)};
+  const auto i = offset + threadIdx.x + blockIdx.x * blockDim.x;
+  const auto x = static_cast<float>(i);
+  const auto s = sinf(x);
+  const auto c = cosf(x);
   a[i] += sqrtf(s * s + c * c);
 }
 
 float maxError(float *a, int n) {
-  float maxE{0};
-  for (int i = 0; i < n; ++i) {
-    float error{fabs(a[i] - 1.0f)};
-    if (error > maxE)
-      maxE = error;
-  }
-  return maxE;
+  float max_error = 0;
+  for (int i = 0; i < n; ++i)
+    max_error = std::max(max_error, std::abs(a[i] - 1.0f));
+  return max_error;
 }
 
 int main(int argc, char **argv) {
-  constexpr int blockSize{256};
-  constexpr int nStreams{4};
-  constexpr int n{4 * 1024 * blockSize * nStreams};
-  constexpr int streamSize{n / nStreams};
-  constexpr int bytes{n * sizeof(float)};
-  constexpr int streamBytes{streamSize * sizeof(float)};
+  constexpr auto block_size = 256U;
+  constexpr auto num_streams = 4;
+  constexpr auto N = 4 * 1024 * block_size * num_streams;
+  constexpr auto stream_size = N / num_streams;
+  constexpr auto bytes = N * sizeof(float);
+  constexpr auto stream_bytes = stream_size * sizeof(float);
 
-  int devId{(argc > 1) ? atoi(argv[1]) : 0};
+  const auto dev_id = (argc > 1) ? atoi(argv[1]) : 0;
 
   cudaDeviceProp prop;
-  checkCuda(cudaGetDeviceProperties(&prop, devId));
-  printf("Device : %s\n", prop.name);
-  checkCuda(cudaSetDevice(devId));
+  CHECK_CUDA_ERROR(cudaGetDeviceProperties(&prop, dev_id));
+  std::cout << "Device : " << prop.name << std::endl;
+  CHECK_CUDA_ERROR(cudaSetDevice(dev_id));
 
   float *a, *d_a;
-  checkCuda(cudaMallocHost(&a, bytes));
-  checkCuda(cudaMalloc(&d_a, bytes));
+  CHECK_CUDA_ERROR(cudaMallocHost(&a, bytes));
+  CHECK_CUDA_ERROR(cudaMalloc(&d_a, bytes));
 
   cudaEvent_t startEvent, stopEvent, dummyEvent;
-  std::array<cudaStream_t, nStreams> streams;
-  checkCuda(cudaEventCreate(&startEvent));
-  checkCuda(cudaEventCreate(&stopEvent));
-  checkCuda(cudaEventCreate(&dummyEvent));
-  for (int i = 0; i < nStreams; ++i)
-    checkCuda(cudaStreamCreate(&streams[i]));
+  std::array<cudaStream_t, num_streams> streams;
+  CHECK_CUDA_ERROR(cudaEventCreate(&startEvent));
+  CHECK_CUDA_ERROR(cudaEventCreate(&stopEvent));
+  CHECK_CUDA_ERROR(cudaEventCreate(&dummyEvent));
+  for (int i = 0; i < num_streams; ++i)
+    CHECK_CUDA_ERROR(cudaStreamCreate(&streams[i]));
 
   // baseline case - sequential transfer and execute
-  std::memset(a, 0, bytes);
-  checkCuda(cudaEventRecord(startEvent, 0));
-  checkCuda(cudaMemcpy(d_a, a, bytes, cudaMemcpyHostToDevice));
-  kernel<<<n / blockSize, blockSize>>>(d_a, 0);
-  checkCuda(cudaMemcpy(a, d_a, bytes, cudaMemcpyDeviceToHost));
-  checkCuda(cudaEventRecord(stopEvent, 0));
-  checkCuda(cudaEventSynchronize(stopEvent));
+  std::fill_n(a, N, 0);
+  CHECK_CUDA_ERROR(cudaEventRecord(startEvent));
+  CHECK_CUDA_ERROR(cudaMemcpy(d_a, a, bytes, cudaMemcpyDefault));
+  kernel<<<N / block_size, block_size>>>(d_a, 0);
+  CHECK_CUDA_ERROR(cudaMemcpy(a, d_a, bytes, cudaMemcpyDefault));
+  CHECK_CUDA_ERROR(cudaEventRecord(stopEvent));
+  CHECK_CUDA_ERROR(cudaEventSynchronize(stopEvent));
   float ms;
-  checkCuda(cudaEventElapsedTime(&ms, startEvent, stopEvent));
-  std::printf("Time for sequential transfer and execute (ms): %f\n", ms);
-  std::printf("\tmax error: %e\n", maxError(a, n));
+  CHECK_CUDA_ERROR(cudaEventElapsedTime(&ms, startEvent, stopEvent));
+  std::cout << "Time for sequential transfer and execute (ms): " << ms
+            << std::endl;
+  std::cout << "\tmax error: " << maxError(a, N) << std::endl;
 
   // async v1: loop over {copy, kernel, copy}
-  std::memset(a, 0, bytes);
-  checkCuda(cudaEventRecord(startEvent, 0));
-  for (int i = 0; i < nStreams; ++i) {
-    const int offset{i * streamSize};
-    checkCuda(cudaMemcpyAsync(&d_a[offset], &a[offset], streamBytes,
-                              cudaMemcpyHostToDevice, streams[i]));
-    kernel<<<streamSize / blockSize, blockSize, 0, streams[i]>>>(d_a, offset);
-    checkCuda(cudaMemcpyAsync(&a[offset], &d_a[offset], streamBytes,
-                              cudaMemcpyDeviceToHost, streams[i]));
+  std::fill_n(a, N, 0);
+  CHECK_CUDA_ERROR(cudaEventRecord(startEvent, 0));
+  for (int i = 0; i < num_streams; ++i) {
+    const auto offset = i * stream_size;
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(&d_a[offset], &a[offset], stream_bytes,
+                                     cudaMemcpyDefault, streams[i]));
+    kernel<<<stream_size / block_size, block_size, 0, streams[i]>>>(d_a,
+                                                                    offset);
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(&a[offset], &d_a[offset], stream_bytes,
+                                     cudaMemcpyDefault, streams[i]));
   }
-  checkCuda(cudaEventRecord(stopEvent, 0));
-  checkCuda(cudaEventSynchronize(stopEvent));
-  checkCuda(cudaEventElapsedTime(&ms, startEvent, stopEvent));
-  std::printf("Time for asynchronous V1 transfer and execute (ms): %f\n", ms);
-  std::printf("\tmax error: %e\n", maxError(a, n));
+  CHECK_CUDA_ERROR(cudaEventRecord(stopEvent, 0));
+  CHECK_CUDA_ERROR(cudaEventSynchronize(stopEvent));
+  CHECK_CUDA_ERROR(cudaEventElapsedTime(&ms, startEvent, stopEvent));
+  std::cout << "Time for asynchronous V1 transfer and execute (ms): " << ms
+            << std::endl;
+  std::cout << "\tmax error: " << maxError(a, N) << std::endl;
 
   // async v2: loop over copy, loop over kernel, loop over copy
-  std::memset(a, 0, bytes);
-  checkCuda(cudaEventRecord(startEvent, 0));
-  for (int i = 0; i < nStreams; ++i) {
-    const int offset{i * streamSize};
-    checkCuda(cudaMemcpyAsync(&d_a[offset], &a[offset], streamBytes,
-                              cudaMemcpyHostToDevice, streams[i]));
+  // std::memset(a, 0, bytes);
+  std::fill_n(a, N, 0);
+  CHECK_CUDA_ERROR(cudaEventRecord(startEvent, 0));
+  for (int i = 0; i < num_streams; ++i) {
+    const auto offset = i * stream_size;
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(&d_a[offset], &a[offset], stream_bytes,
+                                     cudaMemcpyDefault, streams[i]));
   }
-  for (int i = 0; i < nStreams; ++i) {
-    const int offset{i * streamSize};
-    kernel<<<streamSize / blockSize, blockSize, 0, streams[i]>>>(d_a, offset);
+  for (int i = 0; i < num_streams; ++i) {
+    const auto offset = i * stream_size;
+    kernel<<<stream_size / block_size, block_size, 0, streams[i]>>>(d_a,
+                                                                    offset);
   }
-  for (int i = 0; i < nStreams; ++i) {
-    const int offset{i * streamSize};
-    checkCuda(cudaMemcpyAsync(&a[offset], &d_a[offset], streamBytes,
-                              cudaMemcpyDeviceToHost, streams[i]));
+  for (int i = 0; i < num_streams; ++i) {
+    const auto offset = i * stream_size;
+    CHECK_CUDA_ERROR(cudaMemcpyAsync(&a[offset], &d_a[offset], stream_bytes,
+                                     cudaMemcpyDeviceToHost, streams[i]));
   }
-  checkCuda(cudaEventRecord(stopEvent, 0));
-  checkCuda(cudaEventSynchronize(stopEvent));
-  checkCuda(cudaEventElapsedTime(&ms, startEvent, stopEvent));
-  std::printf("Time for asynchronouse V2 transfer and execute (ms): %f\n", ms);
-  std::printf("\tmax error: %e\n", maxError(a, n));
+  CHECK_CUDA_ERROR(cudaEventRecord(stopEvent, 0));
+  CHECK_CUDA_ERROR(cudaEventSynchronize(stopEvent));
+  CHECK_CUDA_ERROR(cudaEventElapsedTime(&ms, startEvent, stopEvent));
+  std::cout << "Time for asynchronouse V2 transfer and execute (ms): " << ms
+            << std::endl;
+  std::cout << "\tmax error: " << maxError(a, N) << std::endl;
 
   // Cleanup
-  checkCuda(cudaEventDestroy(startEvent));
-  checkCuda(cudaEventDestroy(stopEvent));
-  checkCuda(cudaEventDestroy(dummyEvent));
-  for (int i = 0; i < nStreams; ++i)
-    checkCuda(cudaStreamDestroy(streams[i]));
+  CHECK_CUDA_ERROR(cudaEventDestroy(startEvent));
+  CHECK_CUDA_ERROR(cudaEventDestroy(stopEvent));
+  CHECK_CUDA_ERROR(cudaEventDestroy(dummyEvent));
+  for (int i = 0; i < num_streams; ++i)
+    CHECK_CUDA_ERROR(cudaStreamDestroy(streams[i]));
   cudaFree(d_a);
   cudaFreeHost(a);
 

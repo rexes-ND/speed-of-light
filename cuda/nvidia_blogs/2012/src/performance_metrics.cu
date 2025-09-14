@@ -1,4 +1,4 @@
-#include <cstdio>
+#include <iostream>
 #include <vector>
 
 #include <cuda_runtime_api.h>
@@ -49,10 +49,11 @@ int main(int argc, char *argv[]) {
   auto max_error = 0.0f;
   for (int i = 0; i < N; ++i)
     max_error = std::max(max_error, std::abs(y[i] - 4.0f));
-  std::printf("Max error: %f\n", max_error);
+  std::cout << "Max error: " << max_error << std::endl;
 
-  std::printf("Effective Bandwidth (GB/s): %f\n",
-              3 * bytes / (milliseconds * 1e6));
+  const auto effective_bandwidth = 3 * bytes / (milliseconds * 1e6);
+  std::cout << "Effective Bandwidth (GB/s): " << effective_bandwidth
+            << std::endl;
 
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
