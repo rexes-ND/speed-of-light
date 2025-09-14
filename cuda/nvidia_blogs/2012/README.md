@@ -119,10 +119,8 @@ This is especially important for libraries.
 If code in a library uses the default stream,
 there is no chance for the end user to overlap data transfers with the library kernel execution.
 
-# TODO
+## [Expressive Algorithm Programming with Thrust](https://developer.nvidia.com/blog/expressive-algorithmic-programming-thrust/)
 
-- [OpenACC: Directives for GPUs](https://developer.nvidia.com/blog/openacc-directives-gpus/)
-- [An OpenACC Example (Part 1)](https://developer.nvidia.com/blog/openacc-example-part-1/)
-- [An OpenACC Example (Part 2)](https://developer.nvidia.com/blog/openacc-example-part-2/)
-- [Expressive Algorithm Programming with Thrust](https://developer.nvidia.com/blog/expressive-algorithmic-programming-thrust/)
-- CMake support or overkill?
+[Code](src/thrust_intro.cu)
+
+[Thrust](https://nvidia.github.io/cccl/thrust/) is CUDA version of C++ Standard Library.

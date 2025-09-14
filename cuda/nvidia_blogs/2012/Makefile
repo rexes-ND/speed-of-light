@@ -3,7 +3,7 @@ NVCCFLAGS := -O3 -std=c++17 -arch=sm_89 -lineinfo
 
 SRC_DIR := src
 BUILD_DIR := build
-TARGETS := easy_intro_to_cuda performance_metrics query_dev_handle_error data_transfer overlap_data_transfer
+TARGETS := easy_intro_to_cuda performance_metrics query_dev_handle_error data_transfer overlap_data_transfer thrust_intro
 
 .PHONY: all
 all: $(addprefix $(BUILD_DIR)/,$(TARGETS))
