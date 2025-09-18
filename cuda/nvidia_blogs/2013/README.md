@@ -7,6 +7,22 @@ In GPU, there are some cases where it has to take a slower path for denormal val
 One way to avoid denormals is to add small "noise" so that the number is guaranteed to be denormal.
 `nvcc` provides the cmdline option `-ftz=true` which causes all denormalized numbers to be flushed to zero.
 
+## [How to Access Global Memory Efficiently in CUDA C/C++ Kernels](https://developer.nvidia.com/blog/how-access-global-memory-efficiently-cuda-c-kernels/)
+
+[Code](src/gmem_access.cu)
+
+The blog explored kernels that are shifted with fixed offsets and that are strided.
+
+The most important take-away from this blog is that the device coalesces global memory loads and stores issued by warp into as few transactions as possible to minimize DRAM bandwidth.
+
+Arrays allocated in device memory (`cudaMalloc`) are aligned to 256B memory segments by the CUDA driver.
+
+On modern GPU architecture, device memory access with offset has no issue but strided memory access can hurt performance.
+
+Single Precision: ![Single Precision](misc/bandwidth_single.png)
+Double Precision: ![Double Precision](misc/bandwidth_double.png)
+
+## [Using Shared Memory in CUDA C/C++](https://developer.nvidia.com/blog/using-shared-memory-cuda-cc/)
+
 - [How to Access Global Memory Efficiently in CUDA C/C++ Kernels](src/gmem_access.cu)
-- [Using Shared Memory in CUDA C/C++](src/smem.cu)
 - [An Efficient Matrix Transpose in CUDA C/C++](src/matrix_transpose.cu)
