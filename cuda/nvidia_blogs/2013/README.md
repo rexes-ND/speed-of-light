@@ -24,5 +24,18 @@ Double Precision: ![Double Precision](misc/bandwidth_double.png)
 
 ## [Using Shared Memory in CUDA C/C++](https://developer.nvidia.com/blog/using-shared-memory-cuda-cc/)
 
-- [How to Access Global Memory Efficiently in CUDA C/C++ Kernels](src/gmem_access.cu)
-- [An Efficient Matrix Transpose in CUDA C/C++](src/matrix_transpose.cu)
+[Code](src/smem.cu)
+
+The blog introduces the shared memory:
+
+1. Sharing data over shared memory using `__syncthreads()`.
+2. Some hardware details including memory banks and broadcast.
+3. CUDA API(s) related to shared memory configuration.
+
+## [An Efficient Matrix Transpose in CUDA C/C++](https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/)
+
+[Code](src/matrix_transpose.cu)
+
+The blog is about transposing matrix using the shared memory.
+
+The highlight of this blog is using extra padding to avoid shared memory bank conflict.
