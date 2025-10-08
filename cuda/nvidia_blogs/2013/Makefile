@@ -3,7 +3,7 @@ NVCCFLAGS := -O3 -std=c++17 -arch=sm_89 -lineinfo
 
 SRC_DIR := src
 BUILD_DIR := build
-TARGETS := gmem_access smem matrix_transpose
+TARGETS := gmem_access smem matrix_transpose finite_difference
 
 .PHONY: all
 all: $(addprefix $(BUILD_DIR)/,$(TARGETS))

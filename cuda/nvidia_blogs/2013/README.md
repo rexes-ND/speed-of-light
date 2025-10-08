@@ -39,3 +39,15 @@ The blog introduces the shared memory:
 The blog is about transposing matrix using the shared memory.
 
 The highlight of this blog is using extra padding to avoid shared memory bank conflict.
+
+## [Finite Difference Methods in CUDA C/C++, Part 1](https://developer.nvidia.com/blog/finite-difference-methods-cuda-cc-part-1/)
+
+[Code](src/finite_difference.cu)
+
+The blog is about finite difference method.
+
+The highlight of this blog is using shared memory to reuse function values and using constant memory for coefficients.
+
+Constant memory resides in device DRAM and is cached on chip.
+The constant memory cache has only **one read port** but can broadcast data from this port across a warp.
+This means that constant memory is effective when all threads in a warp read the same address, but when threads in a warp read different addresses the reads are serialized.

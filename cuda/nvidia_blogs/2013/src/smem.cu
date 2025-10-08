@@ -62,5 +62,7 @@ int main() {
     }
   }
 
+  cudaFree(tmp_dev);
+
   return 0;
 }
