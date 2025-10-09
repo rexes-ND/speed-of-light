@@ -59,3 +59,22 @@ This means that constant memory is effective when all threads in a warp read the
 The blog is part 2 of the previous blog.
 
 This blog also explored calculating occupancy from register usage (`--ptxas-options=-v`) and number of threads per thread block.
+
+## [CUDA Pro Tip: Write Flexible Kernels with Grid-Stride Loops](https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/)
+
+This blog recommend the use of a grid-stride loop instead of a monolithic kernel.
+
+```cpp
+// monolithic kernel
+// WARNING: This assumes that a single large grid of threads processes the entire array in one pass
+int i = blockIdx.x * blockDim.x + threadIdx.x;
+if (i < n)
+    // ...
+
+
+// grid-stride loop
+// Benefits: scalable, thread reuse, and <<<1, 1>>> for serial execution, which is useful for debugging
+for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    // ...
+}
+```
