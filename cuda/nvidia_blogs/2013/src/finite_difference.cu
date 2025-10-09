@@ -30,6 +30,7 @@ constexpr auto mz = 64;
 constexpr auto s_pencils = 4;  // small # pencils
 constexpr auto l_pencils = 32; // large # pencils
 
+// dimension x {0: short pencil, 1: long pencil}
 dim3 grid[3][2];
 dim3 block[3][2];
 
@@ -200,7 +201,7 @@ __global__ void derivative_x(const float *f, float *df) {
   __shared__ float s_f[s_pencils][mx + 8]; // 4-wide halo
 
   const auto i = threadIdx.x;
-  const auto j = blockIdx.x * blockDim.y + threadIdx.y;
+  const auto j = blockIdx.x * s_pencils + threadIdx.y;
   const auto k = blockIdx.y;
   const auto si = i + 4;
   const auto sj = threadIdx.y;
@@ -225,27 +226,27 @@ __global__ void derivative_x(const float *f, float *df) {
              c_dx * (s_f[sj][si + 4] - s_f[sj][si - 4]));
 }
 
-// this version uses a 64x32 shared memory tile,
-// still with 64*sPencils threads
+// this version uses a 64 x 32 shared memory tile,
+// still with 64 x sPencils threads
 
 __global__ void derivative_x_l_pencils(const float *f, float *df) {
-  __shared__ float s_f[l_pencils][mx + 8]; // 4-wide halo
+  __shared__ float s_f[l_pencils][mx + 8];
 
-  int i = threadIdx.x;
-  int jBase = blockIdx.x * l_pencils;
-  int k = blockIdx.y;
-  int si = i + 4; // local i for shared memory access + halo offset
+  const auto i = threadIdx.x;
+  const auto j_base = blockIdx.x * l_pencils;
+  const auto k = blockIdx.y;
+  const auto si = i + 4;
 
-  for (int sj = threadIdx.y; sj < l_pencils; sj += blockDim.y) {
-    int globalIdx = k * mx * my + (jBase + sj) * mx + i;
-    s_f[sj][si] = f[globalIdx];
+  for (auto sj = threadIdx.y; sj < l_pencils; sj += s_pencils) {
+    const auto idx = k * mx * my + (j_base + sj) * mx + i;
+    s_f[sj][si] = f[idx];
   }
 
   __syncthreads();
 
   // fill in periodic images in shared memory array
   if (i < 4) {
-    for (int sj = threadIdx.y; sj < l_pencils; sj += blockDim.y) {
+    for (auto sj = threadIdx.y; sj < l_pencils; sj += s_pencils) {
       s_f[sj][si - 4] = s_f[sj][si + mx - 5];
       s_f[sj][si + mx] = s_f[sj][si + 1];
     }
@@ -253,12 +254,12 @@ __global__ void derivative_x_l_pencils(const float *f, float *df) {
 
   __syncthreads();
 
-  for (int sj = threadIdx.y; sj < l_pencils; sj += blockDim.y) {
-    int globalIdx = k * mx * my + (jBase + sj) * mx + i;
-    df[globalIdx] = (c_ax * (s_f[sj][si + 1] - s_f[sj][si - 1]) +
-                     c_bx * (s_f[sj][si + 2] - s_f[sj][si - 2]) +
-                     c_cx * (s_f[sj][si + 3] - s_f[sj][si - 3]) +
-                     c_dx * (s_f[sj][si + 4] - s_f[sj][si - 4]));
+  for (auto sj = threadIdx.y; sj < l_pencils; sj += s_pencils) {
+    const auto idx = k * mx * my + (j_base + sj) * mx + i;
+    df[idx] = (c_ax * (s_f[sj][si + 1] - s_f[sj][si - 1]) +
+               c_bx * (s_f[sj][si + 2] - s_f[sj][si - 2]) +
+               c_cx * (s_f[sj][si + 3] - s_f[sj][si - 3]) +
+               c_dx * (s_f[sj][si + 4] - s_f[sj][si - 4]));
   }
 }
 
@@ -269,15 +270,15 @@ __global__ void derivative_x_l_pencils(const float *f, float *df) {
 __global__ void derivative_y(const float *f, float *df) {
   __shared__ float s_f[my + 8][s_pencils];
 
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = threadIdx.y;
-  int k = blockIdx.y;
-  int si = threadIdx.x;
-  int sj = j + 4;
+  const auto i = blockIdx.x * s_pencils + threadIdx.x;
+  const auto j = threadIdx.y;
+  const auto k = blockIdx.y;
+  const auto si = threadIdx.x;
+  const auto sj = j + 4;
 
-  int globalIdx = k * mx * my + j * mx + i;
+  const auto idx = k * mx * my + j * mx + i;
 
-  s_f[sj][si] = f[globalIdx];
+  s_f[sj][si] = f[idx];
 
   __syncthreads();
 
@@ -288,30 +289,31 @@ __global__ void derivative_y(const float *f, float *df) {
 
   __syncthreads();
 
-  df[globalIdx] = (c_ay * (s_f[sj + 1][si] - s_f[sj - 1][si]) +
-                   c_by * (s_f[sj + 2][si] - s_f[sj - 2][si]) +
-                   c_cy * (s_f[sj + 3][si] - s_f[sj - 3][si]) +
-                   c_dy * (s_f[sj + 4][si] - s_f[sj - 4][si]));
+  df[idx] = (c_ay * (s_f[sj + 1][si] - s_f[sj - 1][si]) +
+             c_by * (s_f[sj + 2][si] - s_f[sj - 2][si]) +
+             c_cy * (s_f[sj + 3][si] - s_f[sj - 3][si]) +
+             c_dy * (s_f[sj + 4][si] - s_f[sj - 4][si]));
 }
 
-// y derivative using a tile of 32x64,
-// launch with thread block of 32x8
+// y derivative using a tile of 32 x 64,
+// launch with thread block of 32 x 8
 __global__ void derivative_y_l_pencils(const float *f, float *df) {
+  // Number of threads per block stays the same as derivative_y
   __shared__ float s_f[my + 8][l_pencils];
 
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int k = blockIdx.y;
-  int si = threadIdx.x;
+  const auto i = blockIdx.x * blockDim.x + threadIdx.x;
+  const auto k = blockIdx.y;
+  const auto si = threadIdx.x;
 
-  for (int j = threadIdx.y; j < my; j += blockDim.y) {
-    int globalIdx = k * mx * my + j * mx + i;
-    int sj = j + 4;
-    s_f[sj][si] = f[globalIdx];
+  for (auto j = threadIdx.y; j < my; j += my * s_pencils / l_pencils) {
+    const auto idx = k * mx * my + j * mx + i;
+    const auto sj = j + 4;
+    s_f[sj][si] = f[idx];
   }
 
   __syncthreads();
 
-  int sj = threadIdx.y + 4;
+  const auto sj = threadIdx.y + 4;
   if (sj < 8) {
     s_f[sj - 4][si] = s_f[sj + my - 5][si];
     s_f[sj + my][si] = s_f[sj + 1][si];
@@ -319,13 +321,13 @@ __global__ void derivative_y_l_pencils(const float *f, float *df) {
 
   __syncthreads();
 
-  for (int j = threadIdx.y; j < my; j += blockDim.y) {
-    int globalIdx = k * mx * my + j * mx + i;
-    int sj = j + 4;
-    df[globalIdx] = (c_ay * (s_f[sj + 1][si] - s_f[sj - 1][si]) +
-                     c_by * (s_f[sj + 2][si] - s_f[sj - 2][si]) +
-                     c_cy * (s_f[sj + 3][si] - s_f[sj - 3][si]) +
-                     c_dy * (s_f[sj + 4][si] - s_f[sj - 4][si]));
+  for (auto j = threadIdx.y; j < my; j += my * s_pencils / l_pencils) {
+    const auto idx = k * mx * my + j * mx + i;
+    const auto sj = j + 4;
+    df[idx] = (c_ay * (s_f[sj + 1][si] - s_f[sj - 1][si]) +
+               c_by * (s_f[sj + 2][si] - s_f[sj - 2][si]) +
+               c_cy * (s_f[sj + 3][si] - s_f[sj - 3][si]) +
+               c_dy * (s_f[sj + 4][si] - s_f[sj - 4][si]));
   }
 }
 

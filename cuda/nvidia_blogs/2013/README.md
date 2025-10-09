@@ -51,3 +51,11 @@ The highlight of this blog is using shared memory to reuse function values and u
 Constant memory resides in device DRAM and is cached on chip.
 The constant memory cache has only **one read port** but can broadcast data from this port across a warp.
 This means that constant memory is effective when all threads in a warp read the same address, but when threads in a warp read different addresses the reads are serialized.
+
+## [Finite Difference Methods in CUDA C++, Part 2](https://developer.nvidia.com/blog/finite-difference-methods-cuda-c-part-2/)
+
+[Code](src/finite_difference.cu)
+
+The blog is part 2 of the previous blog.
+
+This blog also explored calculating occupancy from register usage (`--ptxas-options=-v`) and number of threads per thread block.
