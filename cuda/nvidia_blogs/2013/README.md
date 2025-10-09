@@ -100,3 +100,22 @@ The cache (a.k.a compute cache) is automatically invalidated when the device dri
 - `CUDA_CACHE_MAXSIZE` specifies the size of the compute cache in bytes
 - `CUDA_CACHE_PATH` specifies the directory location of compute cache files
 - `CUDA_FORCE_PTX_JIT` can be used to always force JIT compilation (helpful for verifying if fatbin contains PTX)
+
+## [Unified Memory in CUDA 6](https://developer.nvidia.com/blog/unified-memory-in-cuda-6/)
+
+Unified memory creates a pool of managed memory that shared between the CPU and GPU, bridging the CPU-GPU divide.
+Managed memory is accessible to both CPU and GPU using a single pointer.
+The system automatically migrates data allocated in Unified Memory (`cudaMallocManaged`) between host and device so that it looks like CPU memory to code running on the CPU, and like GPU memory to code running on the GPU.
+
+Unified Memory lowers the bar of entry to parallel programming on the CUDA platform, by making device memory management an optimization, rather than a requirement.
+
+Unified Memory depends on UVA (Unified Virtual Addressing).
+UVA provides a single virtual memory address space for all memory system.
+It allows `cudaMemcpy` to be used without specifying where exactly the input and output parameters reside.
+UVA enables "Zero-Copy" memory, which is pinned host memory accessible by device code directly, over PCI-Express, without a memcpy.
+
+Unified Memory is able to automatically migrate data at the level of individual pages between host and device memory.
+
+A key benefit of Unified Memory is simplifying the heterogeneous computing memory model by eliminating the need for deep copies when accessing structured data in GPU kernels.
+
+## [CUDA Pro Tip: Control GPU Visibility with CUDA_VISIBLE_DEVICES](https://developer.nvidia.com/blog/cuda-pro-tip-control-gpu-visibility-cuda_visible_devices/)
