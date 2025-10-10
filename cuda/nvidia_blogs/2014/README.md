@@ -3,3 +3,11 @@
 Use `CUDA_VISIBLE_DEVICES` for restricting execution to a specific device or set of devices.
 
 TODO: Need some background for peer-to-peer memory access to fully understand this blog.
+
+## [Faster Parallel Reductions on Kepler](https://developer.nvidia.com/blog/faster-parallel-reductions-kepler/)
+
+[Code](src/kepler_shfl.cu)
+
+The blog is about using warp shuffle functions to implement parallel reduction.
+
+Atomic operations are also used and [CUB](https://nvidia.github.io/cccl/cub/) is mentioned.
