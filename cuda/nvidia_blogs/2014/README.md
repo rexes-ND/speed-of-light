@@ -37,3 +37,39 @@ $ nvcc -arch=sm_89 -dlink v3.o particle.o main.o -o gpuCode.o
 # but we must explicitly link it when using another linker.
 $ g++ gpuCode.o main.o particle.o v3.o -L/usr/local/cuda/lib64 -lcudart -o app
 ```
+
+## [Adaptive Parallel Computation with CUDA Dynamic Parallelism](https://developer.nvidia.com/blog/introduction-cuda-dynamic-parallelism/)
+
+[Code](https://github.com/canonizer/mandelbrot-dyn)
+
+Dynamic Parallelism is advantaguous for parallel recursive algorithms or nested parallelism.
+
+The blog introduces Dynamic Parellism by example using a fast hierarchical algorithm for computing images of the Mandlebrot set.
+
+A straightforward way (per pixel computation) spends most of the computation time on pixels belonging to the set.
+
+In general, the only areas where we need high-resolution computation are along the fractal boundary of the set.
+This is what Mariani-Silver algorithm does.
+
+```python
+def mariani_silver(rectangle):
+    if border(rectangle) has common dwell:
+        fill recantangle with common dwell
+    else if rectangle size < threshold:
+        per-pixel computation
+    else:
+        for sub_rectangle in rectangle:
+            mariani_silver(sub_rectangle)
+```
+
+Dynamic Parallelism uses the CUDA Device Runtime library (`cudadevrt`), a subset of CUDA Runtime API callable from device code.
+
+To use Dynamic Parallelism, you must use a two-step separate compilation and linking process: first, compile your source into an object file, and then link the object file against the CUDA Device Runtime.
+
+```bash
+# compile
+$ nvcc -arch=sm_89 -dc myprog.cu -o myprog.o
+
+# link
+$ nvcc -arch=sm_89 myprog.o -lcudadevrt -o myprog
+```
