@@ -117,5 +117,3 @@ UVA enables "Zero-Copy" memory, which is pinned host memory accessible by device
 Unified Memory is able to automatically migrate data at the level of individual pages between host and device memory.
 
 A key benefit of Unified Memory is simplifying the heterogeneous computing memory model by eliminating the need for deep copies when accessing structured data in GPU kernels.
-
-## [CUDA Pro Tip: Control GPU Visibility with CUDA_VISIBLE_DEVICES](https://developer.nvidia.com/blog/cuda-pro-tip-control-gpu-visibility-cuda_visible_devices/)
