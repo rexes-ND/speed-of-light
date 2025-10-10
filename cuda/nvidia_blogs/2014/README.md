@@ -73,3 +73,29 @@ $ nvcc -arch=sm_89 -dc myprog.cu -o myprog.o
 # link
 $ nvcc -arch=sm_89 myprog.o -lcudadevrt -o myprog
 ```
+
+## [CUDA Dynamic Parallelism API and Principles](https://developer.nvidia.com/blog/cuda-dynamic-parallelism-api-principles/)
+
+TODO
+
+## [CUDA Pro Tip: Minimize the Tail Effect](https://developer.nvidia.com/blog/cuda-pro-tip-minimize-the-tail-effect/)
+
+The Theoretical Occupancy is the number of threads which **may** run on each multiprocessor (SM).
+The Achieved Occupancy is measured from the execution of the kernel.
+
+On a NVIDIA Tesla K20, there are 13 SM(s) and the Theoretical Occupancy of my kernel was 4 blocks of 256 threads per SM (50%).
+
+The total number of blocks that can run concurrently on a given GPU is referred to as Wave.
+In our example, each full wave consists of 13 x 4 = 52 blocks.
+
+Assuming that the kernel launched 128 blocks, there are 2 full waves and a much smaller wave of 24 blocks.
+The last wave under-utilized the GPU but represent a significant fraction of the run time.
+
+To improve the performance, the `__launch_bounds__` attribute is used to constrain the number of registers which was the main occupancy limiter.
+
+As a result, the occupancy became 5 blocks of 256 threads per SM.
+Each full wave consists of 13 x 5 = 65 blocks.
+The same computation is achieved in 1 full wave and an almost-full wave of 63 blocks.
+
+Tail effect is significant when the number of blocks executed for a kernel is small.
+This is one of the reasons why launching a large number of blocks per grid is recommended.
