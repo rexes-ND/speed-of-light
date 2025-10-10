@@ -3,7 +3,7 @@ NVCCFLAGS := -O3 -std=c++17 -arch=sm_89 -lineinfo
 
 SRC_DIR := src
 BUILD_DIR := build
-TARGETS := kepler_shfl
+TARGETS := kepler_shfl occupancy_api
 
 .PHONY: all
 all: $(addprefix $(BUILD_DIR)/,$(TARGETS))

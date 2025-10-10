@@ -99,3 +99,12 @@ The same computation is achieved in 1 full wave and an almost-full wave of 63 bl
 
 Tail effect is significant when the number of blocks executed for a kernel is small.
 This is one of the reasons why launching a large number of blocks per grid is recommended.
+
+## [CUDA Pro Tip: Occupancy API Simplifies Launch Configuration](https://developer.nvidia.com/blog/cuda-pro-tip-occupancy-api-simplifies-launch-configuration/)
+
+[Code](src/occupancy_api.cu)
+
+This blog introduces runtime functions to help with choosing launch configuration.
+
+These functions are heuristically designed to maximize occupancy.
+Note that the occupancy doesn't guarantee higher performance.
